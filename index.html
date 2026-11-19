@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zainpreneur ERP — Lead Module</title>
+
+  <!-- Bootstrap 5 CSS (CDN — no build step) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmW5pNOn9fJDe1hZvzA3JYyKBwv5oFbx" crossorigin="anonymous">
+  <!-- Bootstrap Icons (CDN) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- HTMX (CDN — no build step) -->
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+  <!-- Alpine.js (CDN — loaded first so components can register) -->
+  <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="css/app.css">
+
+  <!-- Hide elements until Alpine initializes -->
+  <style>[x-cloak] { display: none !important; }</style>
+
+  <!-- App config -->
+  <script defer src="js/config.js"></script>
+  <script defer src="js/api.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body x-data="erpApp" x-init="init"
+      class="d-flex overflow-hidden">
+
+  <!-- ======================== SIDEBAR ======================== -->
+  <aside id="erpSidebar" :class="{ collapsed: false }">
+    <div class="brand">
+      <span class="bi bi-building fs-4"></span>
+      <span class="brand-text fw-bold fs-5">Zainpreneur<span class="text-light opacity-75">ERP</span></span>
+    </div>
+
+    <nav class="flex-grow-1 overflow-y-auto">
+      <template x-for="module in modules" :key="module.key">
+        <a :href="javascript:void(0)"
+           @click="setSection(module.key)"
+           :class="['nav-item', { active: isActive(module.key) }]"
+           x-text="module.label"></a>
+      </template>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="fw-bold">v<span x-text="version"></span></div>
+      <div class="small mt-1" x-text="storageProvider"></div>
+    </div>
+  </aside>
+
+  <!-- Mobile sidebar overlay -->
+  <div class="sidebar-overlay" @click="currentSection = currentSection"></div>
+
+  <!-- ======================== TOPBAR ======================== -->
+  <header id="erpTopbar">
+    <div class="d-flex align-items-center">
+      <button class="btn btn-sm btn-outline-secondary me-3 d-lg-none" @click="
+        document.getElementById('erpSidebar').classList.toggle('show');
+        document.getElementById('erpOverlay').classList.toggle('show');
+      ">
+        <span class="bi bi-list"></span>
+      </button>
+      <span class="navbar-brand fw-bold d-none d-lg-flex">Zainpreneur ERP</span>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <span class="d-none d-md-inline small text-muted">Lead Management Module</span>
+      <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+          <span class="bi bi-person-circle"></span> Admin
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="#" @click="setSection('settings')">Settings</a></li>
+          <li><hr class="dropdown-divider"></li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======================== MAIN ======================== -->
+  <main id="erpMain" class="flex-grow-1 overflow-auto p-4">
+
+    <!-- Toast container -->
+    <div class="toast-container">
+      <div x-show="toastShow" x-transition
+           class="toast-live align-items-center text-bg-[:toastType === 'error' ? 'danger' : 'success'] border-0"
+           role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body" x-text="toastMsg"></div>
+          <button type="button" class="btn-close btn-close-white ms-2" @click="toastShow = false"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= DASHBOARD ================= -->
+    <section x-show="currentSection === 'dashboard'" class="fade">
+      <h2 class="h4 fw-bold mb-4">Dashboard</h2>
+
+      <div class="row g-4 mb-4">
+        <div class="col-md-3">
+          <div class="card card-stat h-100">
+            <div class="card-body">
+              <span class="card-title">Total Leads</span>
+              <div class="big-number mt-2" x-text="stats().total"></div>
+              <div class="text-muted small">All pipeline</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-stat h-100">
+            <div class="card-body">
+              <span class="card-title">Closed-Won</span>
+              <div class="big-number mt-2 text-success" x-text="stats().won"></div>
+              <div class="text-muted small">Won deals</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-stat h-100">
+            <div class="card-body">
+              <span class="card-title">Win Rate</span>
+              <div class="big-number mt-2 text-primary" x-text="stats().rate + '%'"></div>
+              <div class="text-muted small">Conversion</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card card-stat h-100">
+            <div class="card-body">
+              <span class="card-title">Pipeline Value</span>
+              <div class="big-number mt-2 text-info" x-text="formatCurrency(stats().value)"></div>
+              <div class="text-muted small">Total value</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="card card-stat h-100">
+            <div class="card-body">
+              <h5 class="card-title fw-bold mb-3">Quick Actions</h5>
+              <div class="d-grid gap-2">
+                <button class="btn btn-primary btn-lg" @click="openCreate()">
+                  <span class="bi bi-person-plus me-2"></span>Add New Lead
+                </button>
+                <button class="btn btn-outline-primary" @click="loadLeads()">
+                  <span class="bi bi-arrow-repeat me-2"></span>Refresh Leads
+                </button>
+              </div>
+              <div class="mt-4 small text-muted">
+                <p class="mb-1">Storage: <strong x-text="turso.enabled ? 'Turso (libSQL)' : 'localStorage'"></strong></p>
+                <p class="mb-0">Configure <code>js/config.js</code> with your Turso <code>dbUrl</code> to persist to the cloud.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="card card-stat h-100">
+            <div class="card-body">
+              <h5 class="card-title fw-bold mb-3">Leads by Status</h5>
+              <template x-for="status in statuses" :key="status">
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="small" x-text="status"></span>
+                  <span class="badge :class="statusBadge(status)" x-text="leads.filter(l => l.status === status).length"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= LEADS MODULE ================= -->
+    <section x-show="currentSection === 'leads'" class="fade">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 class="h4 fw-bold mb-0">Leads</h2>
+          <p class="text-muted mb-0">Manage your sales pipeline</p>
+        </div>
+        <button class="btn btn-primary" @click="openCreate()">
+          <span class="bi bi-person-plus me-2"></span>Add Lead
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-body py-3">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+              <input type="text" class="form-control form-control-sm"
+                     placeholder="Search name, company, email…"
+                     x-model="filterSearch">
+            </div>
+            <div class="col-md-3">
+              <select class="form-select form-select-sm" x-model="filterStatus">
+                <option value="">All Statuses</option>
+                <template x-for="status in statuses" :key="status">
+                  <option :value="status" x-text="status"></option>
+                </template>
+              </select>
+            </div>
+            <div class="col-md-2 d-grid">
+              <button class="btn btn-outline-secondary btn-sm" @click="filterSearch = ''; filterStatus = ''">
+                Reset
+              </button>
+            </div>
+            <div class="col-md-3 text-end">
+              <span class="badge bg-primary" x-text="filteredLeads.length + ' results'"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leads table -->
+      <div class="card shadow-sm border-0">
+        <div class="table-responsive">
+          <table class="table table-leads table-hover mb-0 align-middle">
+            <thead>
+              <tr>
+                <th style="width: 42px;"></th>
+                <th>Lead</th>
+                <th>Company</th>
+                <th style="width: 160px;">Contact</th>
+                <th style="width: 140px;">Status</th>
+                <th style="width: 130px;">Source</th>
+                <th style="width: 130px;">Value</th>
+                <th style="width: 130px;">Assigned</th>
+                <th style="width: 130px;">Created</th>
+                <th style="width: 110px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="lead in filteredLeads" :key="lead.id">
+                <tr :class="loading ? 'table-active' : ''">
+                  <td>
+                    <div class="avatar bg-light rounded-circle d-flex align-items-center justify-content-center" style="width:32px;height:32px;font-size:0.8rem;" x-text="lead.name ? lead.name.charAt(0).toUpperCase() : '?'"></div>
+                  </td>
+                  <td>
+                    <div class="fw-semibold" x-text="lead.name"></div>
+                    <div class="small text-muted" x-text="lead.email"></div>
+                  </td>
+                  <td x-text="lead.company || '—'" class="text-truncate" style="max-width: 140px;"></td>
+                  <td x-text="lead.phone || '—'" class="small"></td>
+                  <td>
+                    <span class="status-pill" :class="statusBadge(lead.status)">
+                      <span class="dot"></span>
+                      <span x-text="lead.status"></span>
+                    </span>
+                  </td>
+                  <td x-text="lead.source" class="small text-muted"></td>
+                  <td x-text="formatCurrency(lead.value)" class="fw-semibold"></td>
+                  <td x-text="lead.assigned_to || '—'" class="small text-muted"></td>
+                  <td x-text="formatDate(lead.created_at)" class="small text-muted"></td>
+                  <td>
+                    <div class="d-flex gap-1">
+                      <button class="btn btn-sm btn-outline-primary" title="Edit" @click="openEdit(lead)">
+                        <span class="bi bi-pencil"></span>
+                      </button>
+                      <button class="btn btn-sm btn-outline-danger" title="Delete" @click="deleteLead(lead.id)">
+                        <span class="bi bi-trash"></span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+              <tr x-show="filteredLeads.length === 0 && !loading">
+                <td colspan="10">
+                  <div class="empty-state py-5">
+                    <span class="bi bi-collection"></span>
+                    <h5 class="mt-3 fw-semibold">No leads found</h5>
+                    <p class="text-muted">Create your first lead to get started.</p>
+                    <button class="btn btn-primary mt-3" @click="openCreate()">
+                      <span class="bi bi-person-plus me-2"></span>Add Lead
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr x-show="loading">
+                <td colspan="10" class="text-center py-4">
+                  <div class="d-flex justify-content-center gap-2">
+                    <div class="skeleton" style="width:4rem;height:2.5rem;"></div>
+                    <div class="skeleton" style="width:6rem;height:2.5rem;"></div>
+                    <div class="skeleton" style="width:5rem;height:2.5rem;"></div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CUSTOMERS (placeholder) ================= -->
+    <section x-show="currentSection === 'customers'" class="fade">
+      <h2 class="h4 fw-bold mb-4">Customers</h2>
+      <div class="alert alert-info">
+        <span class="bi bi-info-circle me-2"></span>
+        Customers module — <strong>extendable</strong>. Follow the same pattern as the Leads module (add a <code>customers</code> resource in <code>js/api.js</code> and a section here).
+      </div>
+    </section>
+
+    <!-- ================= PRODUCTS (placeholder) ================= -->
+    <section x-show="currentSection === 'products'" class="fade">
+      <h2 class="h4 fw-bold mb-4">Products</h2>
+      <div class="alert alert-info">
+        <span class="bi bi-info-circle me-2"></span>
+        Products module — <strong>extendable</strong>.
+      </div>
+    </section>
+
+    <!-- ================= SETTINGS ================= -->
+    <section x-show="currentSection === 'settings'" class="fade">
+      <h2 class="h4 fw-bold mb-4">Settings</h2>
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="card-title fw-bold">Storage Configuration</h5>
+          <div class="mb-3 p-3 bg-light rounded">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <span class="fw-semibold">Active storage</span>
+              <span class="badge :class="storageMode === 'turso' ? 'bg-success' : 'bg-secondary'" x-text="storageProvider"></span>
+            </div>
+            <div class="small text-muted">
+              The Turso auth token is kept <strong>server-side only</strong> in <code>server.py</code>
+              (via <code>TURSO_DB_URL</code> and <code>TURSO_AUTH_TOKEN</code> env vars). It never reaches the browser.
+            </div>
+          </div>
+          <div class="alert alert-warning mt-3 small">
+            <span class="bi bi-exclamation-triangle me-2"></span>
+            To use Turso instead of the file fallback, run the server with:
+            <br>
+            <code class="d-block mt-1">export TURSO_DB_URL="https://&lt;db&gt;.&lt;user&gt;.turso.io"</code>
+            <code class="d-block">export TURSO_AUTH_TOKEN="your-token"</code>
+            <code class="d-block mt-1">python3 server.py</code>
+          </div>
+          <button class="btn btn-outline-primary" @click="loadLeads()">Reinitialize Data Layer</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= ADD / EDIT LEAD MODAL ================= -->
+  <div class="modal fade" id="leadModal" tabindex="-1" aria-hidden="true"
+       x-show="openLeadModal" x-cloak @click.away="openLeadModal = false">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" x-text="editingId ? 'Edit Lead' : 'Add New Lead'"></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @click="openLeadModal = false"></button>
+        </div>
+        <form @submit.prevent="saveLead()" x-show="!loading">
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label required">Full Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" x-model="form.name" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Company</label>
+                <input type="text" class="form-control" x-model="form.company">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" x-model="form.email">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" x-model="form.phone">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Status <span class="text-danger">*</span></label>
+                <select class="form-select" x-model="form.status" required>
+                  <template x-for="status in statuses" :key="status">
+                    <option :value="status" x-text="status"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Source</label>
+                <select class="form-select" x-model="form.source">
+                  <template x-for="source in sources" :key="source">
+                    <option :value="source" x-text="source"></option>
+                  </template>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Estimated Value</label>
+                <input type="number" step="0.01" min="0" class="form-control" x-model="form.value" placeholder="0.00">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Assigned To</label>
+                <input type="text" class="form-control" x-model="form.assigned_to">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Notes</label>
+                <textarea class="form-control" rows="3" x-model="form.notes"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" @click="openLeadModal = false">Cancel</button>
+            <button type="submit" class="btn btn-primary" :disabled="loading" x-text="loading ? 'Saving…' : (editingId ? 'Update Lead' : 'Create Lead')"></button>
+          </div>
+        </form>
+        <div x-show="loading" class="modal-body text-center py-4">
+          <div class="spinner-border text-primary" role="status"></div>
+          <div class="mt-2 small text-muted">Saving…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-YvpcrYf0tYw3lHB6O1NN3l0Nlx+6iYKg8e2m9u4J1P6q5J8g7d9z2s3k4n5m6p7q8"
+          crossorigin="anonymous"></script>
+
+  <!-- App API + App logic -->
+  <script defer src="js/api.js"></script>
+  <script defer src="js/app.js"></script>
+
+</body>
+</html>
